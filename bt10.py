@@ -61,8 +61,8 @@ async def run_ble_client(args: argparse.Namespace, queue: asyncio.Queue):
 async def run_queue_consumer(queue: asyncio.Queue):
     logger.info("Starting queue consumer")
 
-    T_cycle0 = 0
-    EV = []
+    T_cycle0 = 0 # 第一个cycle开始的时间。
+    E_ON = []    # Save NoteOn event
 
     midi_file = MIDIFile(1)
     midi_file.addTrackName(0, 0, file_name)
@@ -82,8 +82,8 @@ async def run_queue_consumer(queue: asyncio.Queue):
             )
             midi_out.close_port()
             # And write it to disk.
-            if len(EV) != 0:
-                logger.info("%d unmatched note on", len(EV))
+            if len(E_ON) != 0:
+                logger.info("%d unmatched note on", len(E_ON))
             with open(file_name + ".mid", "wb") as output_file:
                 midi_file.writeFile(output_file)
             break
@@ -128,12 +128,12 @@ async def run_queue_consumer(queue: asyncio.Queue):
                 match status:
                     case 0x80: # note off
                         count = 0 #查找对应的Note On
-                        for i, ev in enumerate(EV):
+                        for i, ev in enumerate(E_ON):
                             if ev[1] == data[a+2]:
                                 midi_out.send_message([0x80, data[a+2], data[a+3]])
                                 midi_file.addNote(
                                     0, data[a+1] & 0x0f, ev[1], ev[0]/quarter(), (T_event - ev[0])/quarter(), ev[2])
-                                EV.pop(i)
+                                E_ON.pop(i)
                                 count += 1
                                 break
                         if count == 0:
@@ -141,13 +141,13 @@ async def run_queue_consumer(queue: asyncio.Queue):
 
                     case 0x90: # note on
                         dup = 0 # 检查重复的note on
-                        for ee in EV:
+                        for ee in E_ON:
                             if(ee[1] == data[a+2]):
                                 logger.info("Dup note on %d at T:%d - %d V: %d - %d", ee[1], ee[0], T_event, ee[2], data[a+3])
                                 dup += 1
                         if(dup == 0): #忽略重复的Note On
                             midi_out.send_message([0x90, data[a+2], data[a+3]])
-                            EV.append([T_event, data[a+2], data[a+3]])
+                            E_ON.append([T_event, data[a+2], data[a+3]])
 
                     case 0xb0: # controller
                         midi_out.send_message([0xb0, data[a+2], data[a+3]])
