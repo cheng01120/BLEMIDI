@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 bpm       = 120
 file_name = "Track1"
+save_dir  = "E:/StudioOne/"
 T_start   = time.time() # program start time
 
 def quarter():
@@ -84,7 +85,7 @@ async def run_queue_consumer(queue: asyncio.Queue):
             # And write it to disk.
             if len(E_ON) != 0:
                 logger.info("%d unmatched note on", len(E_ON))
-            with open(file_name + ".mid", "wb") as output_file:
+            with open(save_dir + file_name + ".mid", "wb") as output_file:
                 midi_file.writeFile(output_file)
             break
         else:
